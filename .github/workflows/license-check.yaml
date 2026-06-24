@@ -1,0 +1,102 @@
+name: License Check
+
+on:
+  workflow_call:
+
+permissions:
+  contents: write
+
+jobs:
+  license-fix:
+    name: Fix License Headers
+    runs-on: self-hosted
+    steps:
+      - name: Checkout calling repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Checkout license config
+        uses: actions/checkout@v4
+        with:
+          repository: publius-labs/license-header
+          path: .license-common
+
+      - name: Apply common license config
+        run: |
+          cp .license-common/.licenserc.yaml .licenserc.yaml
+          rm -rf .license-common
+
+      - name: Merge repo-specific ignores
+        if: hashFiles('.licenserc.repo.yaml') != ''
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/workdir" -w /workdir \
+            mikefarah/yq:latest \
+            '.header."paths-ignore" += load(".licenserc.repo.yaml").header."paths-ignore"' \
+            .licenserc.yaml > .licenserc.merged.yaml
+          mv .licenserc.merged.yaml .licenserc.yaml
+
+      - name: Fix license headers
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/github/workspace" \
+            -w /github/workspace \
+            apache/skywalking-eyes:latest \
+            header fix 2>&1 | grep -v "unsupported file" || true
+
+      - name: Commit and push if changes
+        run: |
+          git diff --exit-code && exit 0
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m "chore: update license headers [skip ci]"
+          git push
+
+  license-check:
+    name: Verify License Headers
+    runs-on: self-hosted
+    needs: license-fix
+    steps:
+      - name: Checkout calling repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Checkout license config
+        uses: actions/checkout@v4
+        with:
+          repository: publius-labs/license-header
+          path: .license-common
+
+      - name: Apply common license config
+        run: |
+          cp .license-common/.licenserc.yaml .licenserc.yaml
+          rm -rf .license-common
+
+      - name: Merge repo-specific ignores
+        if: hashFiles('.licenserc.repo.yaml') != ''
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/workdir" -w /workdir \
+            mikefarah/yq:latest \
+            '.header."paths-ignore" += load(".licenserc.repo.yaml").header."paths-ignore"' \
+            .licenserc.yaml > .licenserc.merged.yaml
+          mv .licenserc.merged.yaml .licenserc.yaml
+
+      - name: Check license headers
+        run: |
+          set +e
+          OUTPUT=$(docker run --rm \
+            -v "${{ github.workspace }}:/github/workspace" \
+            -w /github/workspace \
+            apache/skywalking-eyes:latest \
+            header check 2>&1)
+          set -e
+          INVALID_COUNT=$(echo "$OUTPUT" | grep -oE 'invalid: [0-9]+' | grep -oE '[0-9]+' | head -1 || echo "0")
+          echo "$OUTPUT" | grep -v "unsupported file" || true
+          if [ "$INVALID_COUNT" -gt 0 ]; then
+            echo "ERROR: Found $INVALID_COUNT files with missing license headers"
+            exit 1
+          fi
+          echo "All supported files have valid license headers"
