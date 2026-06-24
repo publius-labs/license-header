@@ -1,0 +1,33 @@
+header:
+  license:
+    content: |
+      ---------------------------------------------------------------------------
+      Copyright (C) 2025 Publius Legal Inc. All rights reserved.
+
+      This source code is proprietary and confidential. Unauthorized copying,
+      distribution, modification, or use of this file, in whole or in part,
+      is strictly prohibited without the express written permission of
+      Publius Legal Inc.
+      ---------------------------------------------------------------------------
+
+    pattern: |
+      Copyright.*Publius Legal Inc\..*
+
+  paths-ignore:
+    - '.github/**'
+    - '.claude/**'
+    - '.n1/**'
+    - '**/*.md'
+    - '**/venv/**'
+    - '**/.venv/**'
+    - 'LICENSE'
+    - 'NOTICE'
+    - '**/*.json'
+    - '**/*.toml'
+    - '**/requirements*.txt'
+    - '**/.gitattributes'
+    - '**/.gitignore'
+    - '**/.dockerignore'
+    - '**/.env*'
+
+  comment: on-failure
