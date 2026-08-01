@@ -1,3 +1,17 @@
+# Every `docker run` below carries --user "$(id -u):$(id -g)" (VEL-1358).
+#
+# These runners are self-hosted and their workspaces persist between jobs. A
+# container defaulting to root over a bind-mounted ${{ github.workspace }} leaves
+# root-owned files behind — including inside .git, which this workflow then walks
+# as the runner user. Git refuses a repository it does not own, reporting first
+# "Not a git repository" and then "detected dubious ownership", and the job dies
+# at `git diff` with exit 128. Because Verify needs Fix, the header check is then
+# skipped: the gate goes quiet precisely when it has something to say.
+#
+# Observed on dev-2 (2026-08-01) and dev-3 (2026-07-30); the prod runner passed
+# the same day because its workspace had not been polluted yet. On GitHub-hosted
+# runners the workspace is fresh every time and none of this could happen.
+
 name: License Check
 
 on:
@@ -28,10 +42,20 @@ jobs:
           cp .license-common/.licenserc.yaml .licenserc.yaml
           rm -rf .license-common
 
+      # Repairs a workspace an EARLIER run of this workflow already rooted.
+      # actions/checkout marks the directory safe too, but under a HOME it
+      # overrides and then restores, so the exemption dies with the checkout
+      # step and none of the git commands below inherit it. Without this, a
+      # runner that is already dirty keeps failing no matter what --user does
+      # from now on — the .git it has today is still owned by root.
+      - name: Allow git to use this workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Merge repo-specific ignores
         if: hashFiles('.licenserc.repo.yaml') != ''
         run: |
-          docker run --rm -v "${{ github.workspace }}:/workdir" -w /workdir \
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "${{ github.workspace }}:/workdir" -w /workdir \
             mikefarah/yq:latest \
             '.header."paths-ignore" += load(".licenserc.repo.yaml").header."paths-ignore"' \
             .licenserc.yaml > .licenserc.merged.yaml
@@ -39,7 +63,7 @@ jobs:
 
       - name: Fix license headers
         run: |
-          docker run --rm \
+          docker run --rm --user "$(id -u):$(id -g)" \
             -v "${{ github.workspace }}:/github/workspace" \
             -w /github/workspace \
             apache/skywalking-eyes:latest \
@@ -78,7 +102,8 @@ jobs:
       - name: Merge repo-specific ignores
         if: hashFiles('.licenserc.repo.yaml') != ''
         run: |
-          docker run --rm -v "${{ github.workspace }}:/workdir" -w /workdir \
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "${{ github.workspace }}:/workdir" -w /workdir \
             mikefarah/yq:latest \
             '.header."paths-ignore" += load(".licenserc.repo.yaml").header."paths-ignore"' \
             .licenserc.yaml > .licenserc.merged.yaml
@@ -87,7 +112,7 @@ jobs:
       - name: Check license headers
         run: |
           set +e
-          OUTPUT=$(docker run --rm \
+          OUTPUT=$(docker run --rm --user "$(id -u):$(id -g)" \
             -v "${{ github.workspace }}:/github/workspace" \
             -w /github/workspace \
             apache/skywalking-eyes:latest \
