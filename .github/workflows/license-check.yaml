@@ -69,13 +69,16 @@ jobs:
             apache/skywalking-eyes:latest \
             header fix 2>&1 | grep -v "unsupported file" || true
 
+      # No [skip ci] in the message (VEL-2529): a squash merge copies commit
+      # titles onto main and the token would suppress the deploy. The push uses
+      # GITHUB_TOKEN, which never starts new workflow runs, so no loop either.
       - name: Commit and push if changes
         run: |
           git diff --exit-code && exit 0
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add .
-          git commit -m "chore: update license headers [skip ci]"
+          git commit -m "chore: update license headers"
           git push
 
   license-check:
