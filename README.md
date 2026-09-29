@@ -29,7 +29,7 @@ jobs:
 
 That's it. On the next push to any non-main branch, the workflow will:
 
-1. **Fix** — add missing licence headers and auto-commit with `[skip ci]`
+1. **Fix** — add missing licence headers and auto-commit them. The commit is pushed with `GITHUB_TOKEN`, so it does not trigger further workflow runs; there is deliberately no `[skip ci]`, which would leak into squash-merge messages on `main` and skip the deploy
 2. **Check** — verify all files have valid headers (fails the check if any are missing)
 
 ## Repo-Specific Ignore Patterns
