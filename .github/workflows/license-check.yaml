@@ -16,6 +16,12 @@ name: License Check
 
 on:
   workflow_call:
+    secrets:
+      # A GITHUB_TOKEN push still creates the PR's pull_request runs, but gated
+      # as action_required with no jobs; unapproved, they turn red at merge
+      # (VEL-3340). A PAT push runs them normally.
+      push_token:
+        required: false
 
 permissions:
   contents: write
@@ -28,7 +34,7 @@ jobs:
       - name: Checkout calling repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.push_token || secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Checkout license config
@@ -70,8 +76,8 @@ jobs:
             header fix 2>&1 | grep -v "unsupported file" || true
 
       # No [skip ci] in the message (VEL-2529): a squash merge copies commit
-      # titles onto main and the token would suppress the deploy. The push uses
-      # GITHUB_TOKEN, which never starts new workflow runs, so no loop either.
+      # titles onto main and the token would suppress the deploy. A push_token
+      # push re-runs this workflow once, which finds no diff and exits: no loop.
       - name: Commit and push if changes
         run: |
           git diff --exit-code && exit 0
