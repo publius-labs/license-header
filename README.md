@@ -25,11 +25,17 @@ permissions:
 jobs:
   license:
     uses: publius-labs/license-header/.github/workflows/license-check.yaml@main
+    secrets:
+      push_token: ${{ secrets.LICENSE_PUSH_TOKEN }}
 ```
+
+`push_token` is optional but recommended. Without it the bot commit is pushed with `GITHUB_TOKEN`, and GitHub holds that commit's `pull_request` runs at `action_required` (no jobs) until a maintainer approves them; unapproved, they turn to `failure` when the PR merges.
+
+Use a **repository** secret holding a fine-grained PAT (Contents: read and write on that repo) or a GitHub App token. On the org's GitHub Free plan, private repos do not receive organization secrets, so an org-level secret arrives empty and the workflow silently falls back to `GITHUB_TOKEN`.
 
 That's it. On the next push to any non-main branch, the workflow will:
 
-1. **Fix** — add missing licence headers and auto-commit them. The commit is pushed with `GITHUB_TOKEN`, so it does not trigger further workflow runs; there is deliberately no `[skip ci]`, which would leak into squash-merge messages on `main` and skip the deploy
+1. **Fix** — add missing licence headers and auto-commit them. The commit is pushed with `push_token` (falling back to `GITHUB_TOKEN`), so the PR's CI runs on it like on any other commit; there is deliberately no `[skip ci]`, which would leak into squash-merge messages on `main` and skip the deploy
 2. **Check** — verify all files have valid headers (fails the check if any are missing)
 
 ## Repo-Specific Ignore Patterns
