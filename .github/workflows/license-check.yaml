@@ -1,4 +1,7 @@
-# Every `docker run` below carries --user "$(id -u):$(id -g)" (VEL-1358).
+# Every `docker run` below carries --user "$(id -u):$(id -g)" (VEL-1358), except
+# `header fix`: on rootless or userns-remap Docker the container uid then maps to
+# a subuid and cannot write the checkout, so it omits --user there (VEL-3898). On
+# those runners container root is the runner user, so no root-owned files appear.
 #
 # These runners are self-hosted and their workspaces persist between jobs. A
 # container defaulting to root over a bind-mounted ${{ github.workspace }} leaves
@@ -69,11 +72,24 @@ jobs:
 
       - name: Fix license headers
         run: |
-          docker run --rm --user "$(id -u):$(id -g)" \
+          USER_ARGS=()
+          if ! docker info --format '{{join .SecurityOptions " "}}' | grep -Eq 'name=(rootless|userns)'; then
+            USER_ARGS=(--user "$(id -u):$(id -g)")
+          fi
+          set +e
+          OUTPUT=$(docker run --rm "${USER_ARGS[@]}" \
             -v "${{ github.workspace }}:/github/workspace" \
             -w /github/workspace \
             apache/skywalking-eyes:latest \
-            header fix 2>&1 | grep -v "unsupported file" || true
+            header fix 2>&1)
+          set -e
+          echo "$OUTPUT" | grep -v "unsupported file" || true
+          # header fix exits 1 whenever any "unsupported file" is present, even when it fixed everything,
+          # so the exit status is useless; fail on any residual non-INFO line instead.
+          if echo "$OUTPUT" | grep -v "unsupported file" | grep -v "INFO" | grep -q .; then
+            echo "ERROR: header fix failed"
+            exit 1
+          fi
 
       # No [skip ci] in the message (VEL-2529): a squash merge copies commit
       # titles onto main and the token would suppress the deploy. A push_token
