@@ -69,7 +69,7 @@ push to non-main branch
 
 ## Requirements
 
-- **Self-hosted runner** with Docker (the workflow uses `runs-on: self-hosted`)
+- **Self-hosted runner** with Docker (the workflow uses `runs-on: [self-hosted, ci]`, so the runner must carry the `ci` label)
 - **`permissions: contents: write`** in the caller workflow (required for auto-commit)
 
 ## Common Ignore Patterns (built-in)
