@@ -77,7 +77,7 @@ jobs:
             USER_ARGS=(--user "$(id -u):$(id -g)")
           fi
           set +e
-          OUTPUT=$(docker run --rm "${USER_ARGS[@]}" \
+          OUTPUT=$(docker run --rm --quiet "${USER_ARGS[@]}" \
             -v "${{ github.workspace }}:/github/workspace" \
             -w /github/workspace \
             apache/skywalking-eyes:latest \
