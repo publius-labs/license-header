@@ -1,7 +1,7 @@
 # Every `docker run` below carries --user "$(id -u):$(id -g)" (VEL-1358), except
-# `header fix`: on rootless or userns-remap Docker the container uid then maps to
-# a subuid and cannot write the checkout, so it omits --user there (VEL-3898). On
-# those runners container root is the runner user, so no root-owned files appear.
+# `header fix` on rootless Docker: there the container uid maps to a subuid and
+# cannot write the checkout, so --user is omitted (VEL-3898). Container root is the
+# runner user, so no root-owned files appear.
 #
 # These runners are self-hosted and their workspaces persist between jobs. A
 # container defaulting to root over a bind-mounted ${{ github.workspace }} leaves
@@ -73,7 +73,7 @@ jobs:
       - name: Fix license headers
         run: |
           USER_ARGS=()
-          if ! docker info --format '{{join .SecurityOptions " "}}' | grep -Eq 'name=(rootless|userns)'; then
+          if ! docker info --format '{{join .SecurityOptions " "}}' | grep -q 'name=rootless'; then
             USER_ARGS=(--user "$(id -u):$(id -g)")
           fi
           set +e
