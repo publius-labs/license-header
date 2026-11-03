@@ -29,7 +29,7 @@ permissions:
 jobs:
   license-fix:
     name: Fix License Headers
-    runs-on: self-hosted
+    runs-on: [self-hosted, ci]
     steps:
       - name: Checkout calling repo
         uses: actions/checkout@v4
@@ -89,7 +89,7 @@ jobs:
 
   license-check:
     name: Verify License Headers
-    runs-on: self-hosted
+    runs-on: [self-hosted, ci]
     needs: license-fix
     steps:
       - name: Checkout calling repo
