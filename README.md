@@ -33,6 +33,8 @@ jobs:
 
 Use a **repository** secret holding a fine-grained PAT (Contents: read and write on that repo) or a GitHub App token. On the org's GitHub Free plan, private repos do not receive organization secrets, so an org-level secret arrives empty and the workflow silently falls back to `GITHUB_TOKEN`.
 
+Callers pinned to a SHA do not receive fixes to this workflow. Pins at or before `2550349` (before the VEL-3898 merge `60bccf4`) force `--user` on the header fix and hide its failure with `|| true`, which breaks new-file fixes on rootless Docker runners. Pin to `@main` or a SHA at or after `60bccf4`.
+
 That's it. On the next push to any non-main branch, the workflow will:
 
 1. **Fix** — add missing licence headers and auto-commit them. The commit is pushed with `push_token` (falling back to `GITHUB_TOKEN`), so the PR's CI runs on it like on any other commit; there is deliberately no `[skip ci]`, which would leak into squash-merge messages on `main` and skip the deploy
@@ -88,4 +90,4 @@ push to non-main branch
 
 ## Updating the Header
 
-To change the licence header text or common ignore patterns, edit `.licenserc.yaml` in this repo. All consuming repos pick up the change on their next workflow run — no per-repo updates needed.
+To change the licence header text or common ignore patterns, edit `.licenserc.yaml` in this repo. Consuming repos calling `@main` pick up the change on their next workflow run — no per-repo updates needed. SHA-pinned callers must bump the pin.
